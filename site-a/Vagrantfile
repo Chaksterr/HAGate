@@ -1,0 +1,59 @@
+require "yaml"
+
+# BLOC 1 : lire les valeurs du site 
+cfg  = YAML.load_file(File.join(__dir__, "group_vars", "all.yml"))
+name = cfg["site_name"]
+sid  = cfg["site_id"]
+
+# BLOC 2 : la liste des VM = ton plan d'adressage
+NODES = [
+  ["#{name}-mysql",          cfg["db_ip"]],
+  ["#{name}-web",            cfg["web_ip"]],
+  ["#{name}-haproxy-backup", cfg["ha_backup_ip"]],
+  ["#{name}-haproxy-master", cfg["ha_master_ip"]]   # la dernière lance Ansible
+]
+LAST = NODES.last[0]
+
+Vagrant.configure("2") do |config|
+  # BLOC 3 : réglages communs
+  config.vm.box = "ubuntu/jammy64"      # Ubuntu 22.04
+  config.vm.box_check_update = false
+
+  # BLOC 4 : la même recette pour chaque VM
+  NODES.each do |vm_name, ip|
+    config.vm.define vm_name do |node|
+      node.vm.hostname = vm_name
+
+      # 2e carte réseau = ton LAN (enp0s8)
+      node.vm.network "private_network", ip: ip, netmask: "255.255.255.0",
+                      virtualbox__intnet: cfg["lan_net"]
+
+      node.vm.provider "virtualbox" do |vb|
+        vb.name   = vm_name
+        vb.memory = 1024     # 1 Go de RAM
+        vb.cpus   = 1        # 1 CPU
+        vb.customize ["modifyvm", :id, "--natnet1", "192.168.250.0/24"]  # évite le conflit avec 10.0.2.0/24
+        vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]     # précaution pour Keepalived
+      end
+
+      # BLOC 5 : Ansible, lancé une seule fois, depuis la dernière VM
+      if vm_name == LAST
+        node.vm.provision "ansible" do |a|
+          a.playbook = "playbook.yml"
+          a.limit    = "all"
+          a.compatibility_mode = "2.0"
+          a.groups = {
+            "db"  => ["#{name}-mysql"],
+            "web" => ["#{name}-web"],
+            "ha"  => ["#{name}-haproxy-master", "#{name}-haproxy-backup"]
+          }
+          a.host_vars = {
+            "#{name}-haproxy-master" => { "vrrp_state" => "MASTER", "vrrp_prio" => 110, "router_id" => "SITE#{sid}_HAPROXY_MASTER" },
+            "#{name}-haproxy-backup" => { "vrrp_state" => "BACKUP", "vrrp_prio" => 100, "router_id" => "SITE#{sid}_HAPROXY_BACKUP" }
+          }
+          a.tags = ENV["TAGS"].split(",") if ENV["TAGS"]
+        end
+      end
+    end
+  end
+end

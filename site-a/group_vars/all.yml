@@ -1,0 +1,15 @@
+site_id: A
+site_name: sitea
+lan_net: siteA-lan
+lan_iface: enp0s8
+lan_gw: 10.0.2.1
+vip: 10.0.2.100
+db_ip: 10.0.2.8
+web_ip: 10.0.2.7
+ha_master_ip: 10.0.2.5
+ha_backup_ip: 10.0.2.6
+vrid: 51
+vrrp_pass: Secret12
+db_name: appdb
+db_user: app
+db_pass: AppPass_A1
