@@ -1,2 +1,11 @@
-.vagrantt
+# Vagrant: VM disks, state and generated SSH keys (matches in any site folder)
 .vagrant/
+
+# Ansible
+*.retry
+*.log
+
+# OS and editor files
+.DS_Store
+.idea/
+.vscode/

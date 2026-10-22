@@ -1,0 +1,23 @@
+---
+- name: Install Apache and PHP (mbstring is needed by the app)
+  ansible.builtin.apt:
+    name: [apache2, php, libapache2-mod-php, php-mysql, php-mbstring]
+    state: present
+  notify: Restart apache
+
+- name: Remove the default Apache page
+  ansible.builtin.file:
+    path: /var/www/html/index.html
+    state: absent
+
+- name: Deploy the employee directory
+  ansible.builtin.template:
+    src: index.php.j2
+    dest: /var/www/html/index.php
+    mode: "0644"
+
+- name: Apache enabled and started
+  ansible.builtin.service:
+    name: apache2
+    state: started
+    enabled: true

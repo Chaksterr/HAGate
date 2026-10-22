@@ -1,0 +1,4 @@
+---
+# Derived from vrrp_state, which comes from inventory.ini
+my_ip: "{{ ha_master_ip if vrrp_state == 'MASTER' else ha_backup_ip }}"
+peer_ip: "{{ ha_backup_ip if vrrp_state == 'MASTER' else ha_master_ip }}"

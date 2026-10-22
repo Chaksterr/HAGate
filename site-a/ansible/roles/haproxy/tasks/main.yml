@@ -1,0 +1,30 @@
+---
+- name: Install HAProxy
+  ansible.builtin.apt:
+    name: haproxy
+    state: present
+
+- name: Allow binding the VIP even when this node does not hold it
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/90-nonlocal-bind.conf
+    content: "net.ipv4.ip_nonlocal_bind = 1\n"
+    mode: "0644"
+  register: sysctl_file
+
+- name: Apply the sysctl setting now
+  ansible.builtin.command: sysctl -w net.ipv4.ip_nonlocal_bind=1
+  changed_when: sysctl_file.changed
+
+- name: HAProxy configuration (checked before it is written)
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    mode: "0644"
+    validate: haproxy -c -f %s
+  notify: Restart haproxy
+
+- name: HAProxy enabled and started
+  ansible.builtin.service:
+    name: haproxy
+    state: started
+    enabled: true

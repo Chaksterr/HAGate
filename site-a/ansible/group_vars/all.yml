@@ -12,4 +12,4 @@ vrid: 51
 vrrp_pass: Secret12
 db_name: appdb
 db_user: app
-db_pass: AppPass_A1
+db_pass: app123
