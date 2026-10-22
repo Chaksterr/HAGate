@@ -1,4 +1,4 @@
-# VPN-IT: Two-site interconnection (OPNsense, IPsec, HAProxy, Keepalived)
+# HAGate: Two-site interconnection (OPNsense, IPsec, HAProxy, Keepalived)
 
 
 | Site | Student | LAN | Folder |
