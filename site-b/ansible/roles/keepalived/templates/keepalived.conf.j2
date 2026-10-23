@@ -1,0 +1,33 @@
+global_defs {
+    router_id {{ router_id }}
+    enable_script_security
+    script_user root
+}
+
+vrrp_script chk_haproxy {
+    script "/usr/bin/pgrep haproxy"
+    interval 2
+    weight {{ vrrp_weight }}
+}
+
+vrrp_instance VI_1 {
+    state {{ vrrp_state }}
+    interface {{ lan_iface }}
+    virtual_router_id {{ vrid }}
+    priority {{ vrrp_prio }}
+    advert_int 1
+    unicast_src_ip {{ my_ip }}
+    unicast_peer {
+        {{ peer_ip }}
+    }
+    authentication {
+        auth_type PASS
+        auth_pass {{ vrrp_pass }}
+    }
+    virtual_ipaddress {
+        {{ vip }}/24 dev {{ lan_iface }}
+    }
+    track_script {
+        chk_haproxy
+    }
+}

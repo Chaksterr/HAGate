@@ -1,0 +1,9 @@
+---
+# Derived from vrrp_state, which comes from inventory.ini
+my_ip: "{{ ha_master_ip if vrrp_state == 'MASTER' else ha_backup_ip }}"
+peer_ip: "{{ ha_backup_ip if vrrp_state == 'MASTER' else ha_master_ip }}"
+
+# Invariant: priority + vrrp_weight must be < the peer's priority, or a HAProxy
+# crash leaves the VIP on a node that cannot serve. Site B: 150 + (-60) = 90 < 100.
+vrrp_weight: -20
+

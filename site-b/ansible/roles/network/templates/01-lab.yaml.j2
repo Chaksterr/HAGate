@@ -1,0 +1,17 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    enp0s3:
+      dhcp4: true
+      dhcp4-overrides:
+        use-routes: false
+        use-dns: false
+    {{ lan_iface }}:
+      addresses: [{{ lan_ip }}/24]
+      routes:
+        - to: default
+          via: {{ lan_gw }}
+          metric: 100
+      nameservers:
+        addresses: [{{ lan_gw }}]

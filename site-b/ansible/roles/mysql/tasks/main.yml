@@ -1,0 +1,50 @@
+---
+- name: Install MySQL
+  ansible.builtin.apt:
+    name: mysql-server
+    state: present
+
+- name: Remove the old config file (wrong name, was overridden by Ubuntu's mysqld.cnf)
+  ansible.builtin.file:
+    path: /etc/mysql/mysql.conf.d/99-lan.cnf
+    state: absent
+  notify: Restart mysql
+
+- name: Listen on the LAN IP (zz- sorts after mysqld.cnf, so it wins)
+  ansible.builtin.copy:
+    dest: /etc/mysql/mysql.conf.d/zz-lan.cnf
+    mode: "0644"
+    content: |
+      [mysqld]
+      bind-address = {{ db_ip }}
+  notify: Restart mysql
+
+- name: Apply the new bind-address now
+  ansible.builtin.meta: flush_handlers
+
+- name: MySQL enabled and started
+  ansible.builtin.service:
+    name: mysql
+    state: started
+    enabled: true
+
+- name: Database, user (only from the web server) and sample data
+  ansible.builtin.command:
+    cmd: mysql
+    stdin: |
+      CREATE DATABASE IF NOT EXISTS {{ db_name }};
+      CREATE USER IF NOT EXISTS '{{ db_user }}'@'{{ web_ip }}' IDENTIFIED BY '{{ db_pass }}';
+      ALTER USER '{{ db_user }}'@'{{ web_ip }}' IDENTIFIED BY '{{ db_pass }}';
+      GRANT ALL PRIVILEGES ON {{ db_name }}.* TO '{{ db_user }}'@'{{ web_ip }}';
+      FLUSH PRIVILEGES;
+      CREATE TABLE IF NOT EXISTS {{ db_name }}.employees (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        job_title VARCHAR(100) NOT NULL,
+        email VARCHAR(150) NOT NULL
+      );
+      INSERT INTO {{ db_name }}.employees (name, job_title, email)
+        SELECT 'Sarah Ben Ali', 'Developer', 'sarah@olive.lab' FROM DUAL
+        WHERE NOT EXISTS (SELECT 1 FROM {{ db_name }}.employees);
+  changed_when: false
+  no_log: true

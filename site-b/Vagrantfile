@@ -1,0 +1,79 @@
+# Optional recovery path for the Site B Linux VMs.
+#
+# The authoritative build stays SiteB_Manual_Runbook.md §1–§13: every gate needs
+# per-step evidence. This file only rebuilds the five/six Ubuntu VMs from the same
+# ubuntu/jammy64 box the manual path imports, so a wrecked VM is one command away.
+#
+# NOT managed here: opnsense-b (interactive installer + console NIC assignment).
+#
+#   cd vagrant && vagrant up                 # all Linux VMs
+#   cd vagrant && vagrant up siteb-web       # one VM
+#   cd vagrant && vagrant ssh siteb-mysql    # Vagrant owns the SSH port (not 2202)
+#   cd vagrant && vagrant destroy -f siteb-web && vagrant up siteb-web
+#
+# Host ports: Vagrant allocates its own SSH forward per VM, so the manual
+# 2201–2206 mapping does not apply. `vagrant port <name>` prints the port.
+
+LAB = {
+  "siteb-mysql"          => { ip: "10.15.15.8",   net: "siteB-lan" },
+  "siteb-web"            => { ip: "10.15.15.7",   net: "siteB-lan" },
+  "siteb-haproxy-master" => { ip: "10.15.15.10",  net: "siteB-lan" },
+  "siteb-haproxy-backup" => { ip: "10.15.15.11",  net: "siteB-lan" },
+  # §4 puts the client on siteB-lan; §6 moves it to lab-wan with
+  # 192.168.100.50/24. Change `net:` below and `vagrant reload siteb-client`.
+  "siteb-client"         => { ip: "10.15.15.50",  net: "siteB-lan" },
+  # Simulated Internet router (§2): lab-wan side is 192.168.100.1/24, 512 MB.
+  "isp-router"           => { ip: "192.168.100.1", net: "lab-wan", memory: 512 }
+}
+
+Vagrant.configure("2") do |config|
+  config.vm.box              = "ubuntu/jammy64"
+  config.vm.box_check_update = false      # box 20241002.0.0 is already cached
+  config.vm.boot_timeout     = 600
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = 1024
+    vb.cpus   = 1
+    # VirtualBox NAT defaults to 10.0.2.0/24 — that is Site A's LAN. Keep the
+    # host-side plumbing out of the lab addressing (runbook §1.1).
+    vb.customize ["modifyvm", :id, "--natnet1", "192.168.250.0/24"]
+    vb.customize ["modifyvm", :id, "--nictype1", "82540EM"]
+    vb.customize ["modifyvm", :id, "--audio", "none"]
+    vb.customize ["modifyvm", :id, "--graphicscontroller", "vboxvga"]
+    vb.customize ["modifyvm", :id, "--vram", "16"]
+  end
+
+  LAB.each do |name, spec|
+    config.vm.define name do |m|
+      m.vm.hostname = name
+
+      # Internal network, not host-only: `virtualbox__intnet` is what the
+      # runbook's `--intnet2` creates. auto_config:false keeps Vagrant from
+      # writing netplan over §4/§7.
+      m.vm.network "private_network",
+                   ip: spec[:ip],
+                   auto_config: false,
+                   virtualbox__intnet: spec[:net]
+
+      # SSH is Vagrant's: `vagrant ssh <name>`, raw port via `vagrant port <name>`.
+      # Do not pin host ports here — Vagrant's own SSH rule already allocates
+      # 2200+, and a fixed rule collides with it (client/isp failed to boot).
+
+      m.vm.provider "virtualbox" do |vb|
+        # Name the VM exactly like the lab object (siteb-mysql, siteb-web, …)
+        # instead of vagrant_<dir>_<name>_<timestamp>.
+        # NOTE: the name must be free — if the manual VM of the same name is
+        # still registered, `vagrant up` fails with "machine already exists".
+        vb.name = name
+        vb.memory = spec[:memory] || 1024
+        # Needed for tcpdump on intnet (§5 captures); harmless otherwise.
+        vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
+      end
+
+      # Same prep as runbook §1.2: real netplan, no wait-online stall, own
+      # identity and host keys.
+      m.vm.provision "shell", path: "provision/base.sh"
+    end
+  end
+end

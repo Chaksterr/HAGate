@@ -1,0 +1,9 @@
+---
+# Step 1: every VM reaches the Internet through OPNsense.
+- name: Network (all VMs)
+  hosts: all
+  become: true
+  gather_facts: false
+  roles:
+    - role: network
+      tags: [network]

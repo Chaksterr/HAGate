@@ -1,0 +1,24 @@
+---
+# The application stack. Groups db / web / ha come from inventory.ini.
+- name: Database
+  hosts: db
+  become: true
+  roles:
+    - role: mysql
+      tags: [mysql]
+
+- name: Web server
+  hosts: web
+  become: true
+  roles:
+    - role: web
+      tags: [web]
+
+- name: Load balancers
+  hosts: ha
+  become: true
+  roles:
+    - role: haproxy
+      tags: [haproxy]
+    - role: keepalived
+      tags: [keepalived]
