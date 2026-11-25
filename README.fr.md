@@ -35,7 +35,7 @@ Au départ : deux sites, chacun avec un pare-feu OPNsense et quatre VM Ubuntu. �
 ## 1. Architecture
 
 <p align="center">
-  <img src="docs/architecture_fr.gif" alt="Architecture HAGate" width="100%">
+  <img src="docs/architecture_fr.gif" alt="Architecture HAGate" width="720">
 </p>
 
 L'animation se déroule en quatre parties :

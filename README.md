@@ -35,7 +35,7 @@ Two sites go in, each with an OPNsense firewall and four Ubuntu VMs. Out come a 
 ## 1. Architecture
 
 <p align="center">
-  <img src="docs/architecture_en.gif" alt="HAGate architecture" width="100%">
+  <img src="docs/architecture_en.gif" alt="HAGate architecture" width="720">
 </p>
 
 The animation runs in four parts:
